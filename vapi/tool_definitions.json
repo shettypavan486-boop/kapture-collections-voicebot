@@ -1,0 +1,150 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "verify_customer",
+      "description": "Verifies the customer's identity using their account ID and a verification code such as the last 4 digits of PAN or birth year. This must succeed before any debt information is disclosed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The customer's account ID."
+          },
+          "verification_code": {
+            "type": "string",
+            "description": "The verification code provided by the customer."
+          }
+        },
+        "required": [
+          "account_id",
+          "verification_code"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "log_promise_to_pay",
+      "description": "Records a customer's promise to pay, including the agreed payment date and amount.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The customer's account ID."
+          },
+          "ptp_date": {
+            "type": "string",
+            "description": "The agreed payment date in ISO format YYYY-MM-DD."
+          },
+          "amount": {
+            "type": "number",
+            "description": "The amount the customer agreed to pay."
+          }
+        },
+        "required": [
+          "account_id",
+          "ptp_date",
+          "amount"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "send_payment_link",
+      "description": "Sends a mock payment link to the customer's registered contact through SMS or WhatsApp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The customer's account ID."
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "SMS",
+              "WhatsApp",
+              "BOTH"
+            ],
+            "description": "The channel through which the payment link should be sent."
+          }
+        },
+        "required": [
+          "account_id",
+          "channel"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "escalate_to_agent",
+      "description": "Escalates the conversation to a human agent when the customer has a hardship request, dispute, or another situation requiring human assistance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The customer's account ID."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "HARDSHIP_REQUEST",
+              "DISPUTE",
+              "CUSTOMER_REQUEST"
+            ],
+            "description": "The reason for escalation."
+          }
+        },
+        "required": [
+          "account_id",
+          "reason"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "mark_disposition",
+      "description": "Records the final outcome of the collections call.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The customer's account ID."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PTP_AGREED",
+              "ALREADY_PAID",
+              "DISPUTED",
+              "HARDSHIP_ESCALATED",
+              "WRONG_PERSON",
+              "DO_NOT_CALL",
+              "NO_RESPONSE"
+            ],
+            "description": "The final call disposition."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional notes describing the call outcome."
+          }
+        },
+        "required": [
+          "account_id",
+          "status"
+        ]
+      }
+    }
+  }
+]
