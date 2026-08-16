@@ -1,122 +1,189 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useRef, useState } from "react";
+import * as VapiModule from "@vapi-ai/web";
+import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [started, setStarted] = useState(false);
+  const [status, setStatus] = useState("Ready to call");
+  const [messages, setMessages] = useState([]);
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  const vapiRef = useRef(null);
 
-      <div className="ticks"></div>
+  const publicKey = import.meta.env.VITE_VAPI_PUBLIC_KEY;
+  const assistantId = import.meta.env.VITE_VAPI_ASSISTANT_ID;
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  useEffect(() => {
+    console.log("Public key exists:", !!publicKey);
+    console.log("Assistant ID exists:", !!assistantId);
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    if (!publicKey) {
+      setStatus("Vapi public key is missing");
+      console.error("VITE_VAPI_PUBLIC_KEY is missing");
+      return;
+    }
+
+    if (!assistantId) {
+      setStatus("Vapi assistant ID is missing");
+      console.error("VITE_VAPI_ASSISTANT_ID is missing");
+      return;
+    }
+
+    try {
+      // Initialize Vapi
+      const VapiClass =
+  VapiModule.default?.default ||
+  VapiModule.default ||
+  VapiModule.Vapi;
+
+console.log("Resolved Vapi class:", VapiClass);
+
+if (typeof VapiClass !== "function") {
+  throw new Error("Could not resolve Vapi constructor");
 }
 
-export default App
+const vapi = new VapiClass(publicKey);
+
+console.log("Vapi initialized successfully:", vapi);
+
+vapiRef.current = vapi;
+
+
+      // Call started
+      vapi.on("call-start", () => {
+        console.log("Call started");
+        setStarted(true);
+        setStatus("Call connected");
+      });
+
+      // Call ended
+      vapi.on("call-end", () => {
+        console.log("Call ended");
+        setStarted(false);
+        setStatus("Call ended");
+      });
+
+      // Speech started
+      vapi.on("speech-start", () => {
+        console.log("Assistant started speaking");
+        setStatus("Assistant speaking...");
+      });
+
+      // Speech ended
+      vapi.on("speech-end", () => {
+        console.log("Assistant stopped speaking");
+        setStatus("Listening...");
+      });
+
+      // Messages / transcripts
+      vapi.on("message", (message) => {
+  console.log("Vapi message:", message);
+
+  if (
+    message.type === "transcript" &&
+    message.transcriptType === "final"
+  ) {
+    setMessages((previous) => [
+      ...previous,
+      {
+        role: message.role,
+        text: message.transcript,
+      },
+    ]);
+  }
+});
+
+      // Errors
+      vapi.on("error", (error) => {
+        console.error("Vapi error:", error);
+        setStatus("Call error");
+      });
+
+      // Cleanup
+      return () => {
+        vapi.stop();
+        vapi.removeAllListeners();
+        vapiRef.current = null;
+      };
+    } catch (error) {
+      console.error("VAPI INIT ERROR:", error);
+      console.error("Error message:", error.message);
+
+      setStatus("Vapi initialization failed");
+    }
+  }, [publicKey, assistantId]);
+
+  const startCall = async () => {
+    try {
+      if (!vapiRef.current) {
+        console.error("Vapi is not initialized");
+        setStatus("Vapi is not initialized");
+        return;
+      }
+
+      if (!assistantId) {
+        console.error("Assistant ID is missing");
+        setStatus("Assistant ID is missing");
+        return;
+      }
+
+      console.log("Starting assistant:", assistantId);
+
+      setStatus("Starting call...");
+
+      await vapiRef.current.start(assistantId);
+    } catch (error) {
+      console.error("START CALL ERROR:", error);
+      setStatus("Unable to start call");
+    }
+  };
+
+  const endCall = () => {
+    if (vapiRef.current) {
+      vapiRef.current.stop();
+    }
+  };
+
+  return (
+    <div className="app">
+      <div className="container">
+        <h1>Kapture Finance</h1>
+
+        <p className="subtitle">
+          Voice-based customer support assistant
+        </p>
+
+        <p className="status">{status}</p>
+
+        {!started ? (
+          <button onClick={startCall} className="call-button">
+            🎙️ Start Call
+          </button>
+        ) : (
+          <button onClick={endCall} className="call-button">
+            📞 End Call
+          </button>
+        )}
+
+        {messages.length > 0 && (
+          <div className="transcript">
+            <h2>Conversation</h2>
+
+            {messages.map((message, index) => (
+              <div key={index} className="message">
+                <strong>
+                  {message.role === "assistant"
+                    ? "Maya"
+                    : "You"}
+                  :
+                </strong>{" "}
+                {message.text}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
